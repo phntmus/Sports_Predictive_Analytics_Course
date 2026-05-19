@@ -1,0 +1,38 @@
+@page "/matches"
+@attribute [Authorize]
+@inject IMatchRepository MatchRepository
+
+<h1>Предстоящие матчи</h1>
+<p>На странице отображаются события, для которых система может рассчитать вероятность исходов.</p>
+
+@if (matches is null)
+{
+    <p>Загрузка...</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>Матч</th><th>Дата</th><th>Спорт</th><th>ELO хозяев</th><th>ELO гостей</th></tr></thead>
+        <tbody>
+        @foreach (var match in matches)
+        {
+            <tr>
+                <td>@match.HomeTeam?.Name — @match.AwayTeam?.Name</td>
+                <td>@match.StartTime.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>@match.Sport</td>
+                <td>@match.HomeTeam?.EloRating</td>
+                <td>@match.AwayTeam?.EloRating</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Match>? matches;
+
+    protected override async Task OnInitializedAsync()
+    {
+        matches = await MatchRepository.GetUpcomingAsync();
+    }
+}

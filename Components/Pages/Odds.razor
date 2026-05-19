@@ -1,0 +1,38 @@
+@page "/odds"
+@attribute [Authorize]
+@inject IOddsPredictionService PredictionService
+
+<h1>Расчет коэффициентов</h1>
+<p>Расчет выполняется по комбинированной модели: ELO-рейтинг, форма команд и нормализованные прошлые коэффициенты.</p>
+
+@if (predictions is null)
+{
+    <p>Загрузка...</p>
+}
+else
+{
+    <div class="analytics-grid">
+        @foreach (var p in predictions)
+        {
+            <div class="analytics-card">
+                <h3>@p.MatchName</h3>
+                <p>@p.Explanation</p>
+                <div class="bar"><span style="width:@(p.HomeWinProbability*100)%"></span></div>
+                <p>П1: @p.HomeWinOdds (@Percent(p.HomeWinProbability))</p>
+                <p>Х: @p.DrawOdds (@Percent(p.DrawProbability))</p>
+                <p>П2: @p.AwayWinOdds (@Percent(p.AwayWinProbability))</p>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<PredictionResult>? predictions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        predictions = await PredictionService.GetUpcomingPredictionsAsync();
+    }
+
+    private static string Percent(double value) => $"{value:P1}";
+}
