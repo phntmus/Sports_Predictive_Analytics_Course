@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="kg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F9A825"/>
+      <stop offset="100%" style="stop-color:#F57F17"/>
+    </linearGradient>
+  </defs>
+  <path d="M50 5 L90 20 L90 60 Q90 85 50 95 Q10 85 10 60 L10 20 Z" fill="#1a1a1a" stroke="#F9A825" stroke-width="3"/>
+  <text x="50" y="46" font-family="Arial" font-size="22" font-weight="900" fill="#F9A825" text-anchor="middle">К</text>
+  <text x="50" y="68" font-family="Arial" font-size="9" font-weight="700" fill="#FFE082" text-anchor="middle">КРАСНОДАР</text>
+</svg>

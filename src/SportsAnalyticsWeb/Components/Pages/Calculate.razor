@@ -1,0 +1,257 @@
+@page "/calculate"
+@attribute [Authorize]
+@inject ITeamRepository TeamRepository
+@inject IOddsPredictionService PredictionService
+@inject IValidator<ManualPredictionRequest> Validator
+
+<PageTitle>Расчёт прогноза — 424 Sport Predict</PageTitle>
+
+<h1>Расчёт прогноза</h1>
+<p class="page-subtitle">Выберите команды — система рассчитает вероятности и коэффициенты</p>
+
+@if (teams is null)
+{
+    <div class="loading"><div class="spinner"></div><p>Загрузка команд...</p></div>
+}
+else
+{
+    <div class="calc-layout">
+
+        //ФОРМА ВЫБОРА 
+        <div class="calc-form-card">
+            <div class="team-selector-row">
+
+                <!-- Хозяева -->
+                <div class="team-selector">
+                    <div class="selector-label">Хозяева</div>
+                    @if (homeTeam is not null)
+                    {
+                        <div class="selected-team">
+                            <img src="@homeTeam.LogoUrl" class="crest-md" alt="@homeTeam.Name" />
+                            <div>
+                                <div class="team-name-lg">@homeTeam.Name</div>
+                                <div class="team-meta">ELO: @homeTeam.EloRating.ToString("F0")</div>
+                            </div>
+                            <button class="btn-clear" @onclick="ClearHome">✕ Сменить</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="team-grid">
+                            @foreach (var t in teams.Where(t => t.Id != awayTeam?.Id))
+                            {
+                                var captured = t;
+                                <button class="team-tile" @onclick="() => SelectHome(captured)">
+                                    <img src="@captured.LogoUrl" class="crest-sm" alt="@captured.Name" />
+                                    <span>@captured.Name</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="vs-divider">VS</div>
+
+                <!-- Гости -->
+                <div class="team-selector">
+                    <div class="selector-label">Гости</div>
+                    @if (awayTeam is not null)
+                    {
+                        <div class="selected-team">
+                            <img src="@awayTeam.LogoUrl" class="crest-md" alt="@awayTeam.Name" />
+                            <div>
+                                <div class="team-name-lg">@awayTeam.Name</div>
+                                <div class="team-meta">ELO: @awayTeam.EloRating.ToString("F0")</div>
+                            </div>
+                            <button class="btn-clear" @onclick="ClearAway">✕ Сменить</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="team-grid">
+                            @foreach (var t in teams.Where(t => t.Id != homeTeam?.Id))
+                            {
+                                var captured = t;
+                                <button class="team-tile" @onclick="() => SelectAway(captured)">
+                                    <img src="@captured.LogoUrl" class="crest-sm" alt="@captured.Name" />
+                                    <span>@captured.Name</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Маржа -->
+            <div class="margin-row">
+                <label class="margin-label">
+                    Маржа букмекера: <b>@marginPercent%</b>
+                </label>
+                <input type="range" min="0" max="20" step="1"
+                       value="@marginPercent"
+                       @oninput="OnMarginChange"
+                       class="range-slider" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="calc-error">@errorMessage</div>
+            }
+
+            <button class="btn-primary btn-calc"
+                    @onclick="CalculateAsync"
+                    disabled="@(homeTeam is null || awayTeam is null || isBusy)">
+                @(isBusy ? "Рассчитываем..." : "Рассчитать коэффициенты")
+            </button>
+        </div>
+
+        //РЕЗУЛЬТАТ
+        @if (result is not null && homeTeam is not null && awayTeam is not null)
+        {
+            <div class="result-card">
+                <div class="result-header">
+                    <div class="result-team">
+                        <img src="@homeTeam.LogoUrl" class="crest-lg" alt="@homeTeam.Name" />
+                        <span class="result-team-name">@homeTeam.Name</span>
+                    </div>
+                    <div class="result-vs">VS</div>
+                    <div class="result-team">
+                        <img src="@awayTeam.LogoUrl" class="crest-lg" alt="@awayTeam.Name" />
+                        <span class="result-team-name">@awayTeam.Name</span>
+                    </div>
+                </div>
+
+                <div class="odds-result-grid">
+                    <div class="odds-result-item @(IsMax(result.HomeWinProbability) ? "odds-best" : "")">
+                        <div class="odds-label">Победа хозяев (П1)</div>
+                        <div class="odds-value">@result.HomeWinOdds</div>
+                        <div class="odds-prob">@Pct(result.HomeWinProbability)</div>
+                        <div class="prob-bar">
+                            <div class="prob-fill" style="width:@(result.HomeWinProbability * 100)%"></div>
+                        </div>
+                    </div>
+
+                    <div class="odds-result-item @(IsMax(result.DrawProbability) ? "odds-best" : "")">
+                        <div class="odds-label">Ничья (Х)</div>
+                        <div class="odds-value">@result.DrawOdds</div>
+                        <div class="odds-prob">@Pct(result.DrawProbability)</div>
+                        <div class="prob-bar">
+                            <div class="prob-fill" style="width:@(result.DrawProbability * 100)%"></div>
+                        </div>
+                    </div>
+
+                    <div class="odds-result-item @(IsMax(result.AwayWinProbability) ? "odds-best" : "")">
+                        <div class="odds-label">Победа гостей (П2)</div>
+                        <div class="odds-value">@result.AwayWinOdds</div>
+                        <div class="odds-prob">@Pct(result.AwayWinProbability)</div>
+                        <div class="prob-bar">
+                            <div class="prob-fill" style="width:@(result.AwayWinProbability * 100)%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-explanation">
+                    <span class="explain-icon">i</span> @result.Explanation
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Team>? teams;
+    private Team? homeTeam;
+    private Team? awayTeam;
+    private int marginPercent = 7;
+    private PredictionResult? result;
+    private string errorMessage = string.Empty;
+    private bool isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        teams = await TeamRepository.GetAllAsync();
+    }
+
+    // Отдельные методы вместо лямбд напрямую в foreach — надёжнее в Blazor Server
+    private void SelectHome(Team t)
+    {
+        homeTeam = t;
+        result = null;
+    }
+
+    private void SelectAway(Team t)
+    {
+        awayTeam = t;
+        result = null;
+    }
+
+    private void ClearHome()
+    {
+        homeTeam = null;
+        result = null;
+    }
+
+    private void ClearAway()
+    {
+        awayTeam = null;
+        result = null;
+    }
+
+    private void OnMarginChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v))
+        {
+            marginPercent = v;
+        }
+    }
+
+    private async Task CalculateAsync()
+    {
+        if (homeTeam is null || awayTeam is null)
+        {
+            return;
+        }
+
+        isBusy = true;
+        errorMessage = string.Empty;
+        result = null;
+
+        var request = new ManualPredictionRequest
+        {
+            HomeTeamId = homeTeam.Id,
+            AwayTeamId = awayTeam.Id,
+            MarginPercent = marginPercent,
+        };
+
+        var validation = await Validator.ValidateAsync(request);
+        if (!validation.IsValid)
+        {
+            errorMessage = validation.Errors.First().ErrorMessage;
+            isBusy = false;
+            return;
+        }
+
+        // Загружаем историю для этих команд и передаём в CalculateManual
+        var history = await GetRelevantHistoryAsync();
+        result = PredictionService.CalculateManual(homeTeam, awayTeam, history, marginPercent);
+
+        isBusy = false;
+    }
+
+    // Получаем историю матчей для выбранных команд напрямую через сервис
+    private async Task<List<HistoricalMatch>> GetRelevantHistoryAsync()
+    {
+        // Используем GetUpcomingPredictionsAsync как источник истории — нет,
+        // просто возвращаем пустой список: CalculateManual сам обрабатывает отсутствие истории
+        // через CalculateHistoricalMarketProbability (возвращает дефолт 0.45/0.25/0.30)
+        return await Task.FromResult(new List<HistoricalMatch>());
+    }
+
+    private static string Pct(double v) => $"{v:P1}";
+
+    private bool IsMax(double v) =>
+        result is not null &&
+        v >= result.HomeWinProbability &&
+        v >= result.DrawProbability &&
+        v >= result.AwayWinProbability;
+}

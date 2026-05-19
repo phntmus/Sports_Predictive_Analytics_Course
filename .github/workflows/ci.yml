@@ -1,0 +1,22 @@
+name: dotnet-ci
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore src/SportsAnalyticsWeb/SportsAnalyticsWeb.csproj
+      - name: Build
+        run: dotnet build src/SportsAnalyticsWeb/SportsAnalyticsWeb.csproj --configuration Release --no-restore
+      - name: Test
+        run: dotnet test tests/SportsAnalytics.Tests/SportsAnalytics.Tests.csproj --configuration Release --collect:"XPlat Code Coverage"
