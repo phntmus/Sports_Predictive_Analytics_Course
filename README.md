@@ -125,8 +125,8 @@ GET http://localhost:8024/health
 docker login
 
 # Собрать с тегом Docker Hub
-docker build -t ВАШ_ЛОГИН/sports-analytics-coursework:24 .
+docker build -t dmitriyisarov/sports_analytics_course:latest .
 
 # Отправить на Docker Hub
-docker push ВАШ_ЛОГИН/sports-analytics-coursework:24
+docker push dmitriyisarov/sports_analytics_course:latest
 ```
