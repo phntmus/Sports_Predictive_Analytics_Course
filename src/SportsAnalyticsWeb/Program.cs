@@ -18,15 +18,10 @@ public sealed class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
         ConfigureServices(builder);
-
         var app = builder.Build();
-
         ConfigurePipeline(app);
-
         await InitialiseDatabaseAsync(app);
-
         await app.RunAsync();
     }
 
