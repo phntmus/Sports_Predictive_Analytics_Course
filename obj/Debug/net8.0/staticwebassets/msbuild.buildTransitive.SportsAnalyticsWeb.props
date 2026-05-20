@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\buildMultiTargeting\SportsAnalyticsWeb.props" />
-</Project>
